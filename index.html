@@ -1,0 +1,588 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Neon Drive — Futuristic File Space</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg: #0b0f1a;
+      --panel: rgba(255,255,255,0.06);
+      --border: rgba(255,255,255,0.12);
+      --neon: #7df9ff;
+      --magenta: #ff2ea6;
+      --amber: #ffbf00;
+      --text: #e8eef7;
+    }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+      background: radial-gradient(1200px 600px at 20% 0%, #0b0f1a 0%, #05070d 60%, #000 100%);
+      color: var(--text);
+      overflow: hidden;
+    }
+    .app { display: flex; height: 100vh; width: 100vw; }
+    .sidebar {
+      width: 280px; flex-shrink: 0; padding: 16px;
+      border-right: 1px solid var(--border);
+    }
+    .main { flex: 1; display: flex; flex-direction: column; }
+    .topbar { position: sticky; top: 0; z-index: 5; padding: 10px; display: flex; gap: 12px; align-items: center; border-bottom: 1px solid var(--border); }
+    .content { padding: 16px; overflow: auto; }
+    .glass {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-radius: 12px;
+    }
+    .neon { color: var(--neon); text-shadow: 0 0 7px rgba(125,249,255,.5); }
+    .accent { color: var(--magenta); }
+    .btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px 12px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    }
+    .btn:hover { border-color: rgba(125,249,255,.5); box-shadow: 0 0 12px rgba(125,249,255,.35); transform: translateY(-1px); }
+    .btn-primary { border-color: rgba(125,249,255,.5); }
+    .input {
+      background: transparent; color: var(--text); border: 1px solid var(--border);
+      padding: 8px 10px; border-radius: 10px; outline: none; width: 100%;
+    }
+    .input::placeholder { color: #a7b0c1; }
+    .side-head { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+    .folder-list { max-height: 55vh; overflow: auto; padding-right: 6px; }
+    .folder-item {
+      width: 100%; display: flex; gap: 8px; align-items: center;
+      padding: 8px 10px; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 6px;
+      cursor: pointer; transition: border-color .15s ease, background .15s ease;
+    }
+    .folder-item.active { border-color: rgba(125,249,255,.5); background: rgba(255,255,255,.06); }
+    .folder-item:hover { border-color: rgba(125,249,255,.35); background: rgba(255,255,255,.05); }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .card {
+      padding: 12px; border-radius: 12px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 0 12px rgba(125,249,255,.35); border-color: rgba(125,249,255,.35); }
+    .card-top { display: flex; justify-content: space-between; align-items: flex-start; }
+    .muted { color: #a7b0c1; }
+    .row { display: flex; gap: 8px; align-items: center; }
+    .spacer { flex: 1; }
+    .breadcrumbs { color: #a7b0c1; font-size: 14px; }
+    .breadcrumbs button { color: inherit; background: transparent; border: none; padding: 0; cursor: pointer; }
+    .breadcrumbs button:hover { color: var(--neon); text-shadow: 0 0 7px rgba(125,249,255,.5); }
+    .menu { position: fixed; z-index: 50; min-width: 180px; overflow: hidden; }
+    .menu-item { width: 100%; text-align: left; padding: 10px 12px; border: none; background: transparent; color: var(--text); cursor: pointer; }
+    .menu-item:hover { background: rgba(255,255,255,.06); }
+    .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.6); z-index: 40; }
+    .modal { position: fixed; inset: 0; display: grid; place-items: center; z-index: 45; }
+    .dropzone {
+      border: 1px dashed var(--border);
+      padding: 22px; text-align: center; border-radius: 12px;
+      transition: border-color .15s ease, background .15s ease;
+    }
+    .dropzone.drag { border-color: var(--neon); background: rgba(125,249,255,.06); }
+    .player { width: min(1000px, 90vw); }
+    video { width: 100%; border-radius: 10px; }
+    .dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+    .dot-amber { background: var(--amber); }
+    .dot-neon { background: var(--neon); }
+    .dot-magenta { background: var(--magenta); }
+    .hidden { display: none; }
+    .row-between { justify-content: space-between; margin-bottom: 8px; }
+    .margin-top-16 { margin-top: 16px; }
+    .flex-1 { flex: 1; }
+    .width-140 { width: 140px; }
+    .margin-top-12 { margin-top: 12px; }
+    .glass-modal { width: min(560px, 92vw); padding: 14px; }
+    .dropzone-spacing { margin-bottom: 10px; }
+    .row-center { justify-content: center; gap: 16px; margin-bottom: 10px; }
+    .glass-player { padding: 10px; }
+    .player-loading { padding: 40px; text-align: center; }
+    .card-spacing { margin-top: 8px; justify-content: space-between; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar glass">
+      <div class="side-head">
+        <span class="dot dot-neon"></span>
+        <button id="rootBtn" class="btn btn-primary" type="button"><span class="neon">My Drive</span></button>
+      </div>
+
+      <div class="row row-between">
+        <span class="muted">Folders</span>
+        <button id="newFolderBtn" class="btn" type="button">+ New folder</button>
+      </div>
+
+      <div id="folderList" class="folder-list"></div>
+
+      <div class="margin-top-16">
+        <button id="trashBtn" class="btn" type="button">Trash</button>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar glass">
+        <button id="uploadBtn" class="btn btn-primary" type="button">Upload</button>
+        <div class="row flex-1">
+          <input id="searchInput" class="input" placeholder="Search files..." />
+        </div>
+        <div class="row">
+          <label class="muted">Sort</label>
+          <select id="sortSelect" class="input width-140" title="Sort files by">
+            <option value="createdAt">Recent</option>
+            <option value="name">Name</option>
+            <option value="size">Size</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="breadcrumbs" id="breadcrumbs"></div>
+        <div id="grid" class="grid margin-top-12"></div>
+      </div>
+    </main>
+  </div>
+
+  <div id="uploadOverlay" class="overlay hidden"></div>
+  <div id="uploadModal" class="modal hidden">
+    <div class="glass glass-modal">
+      <div class="row row-between">
+        <h3 class="neon">Upload files</h3>
+        <button id="closeUpload" class="btn accent" type="button">Close</button>
+      </div>
+      <div id="dropzone" class="dropzone">
+        <p class="muted dropzone-spacing">Drag & drop here or choose files</p>
+        <div class="row row-center">
+          <span class="dot dot-amber"></span>
+          <span class="dot dot-neon"></span>
+          <span class="dot dot-magenta"></span>
+        </div>
+        <button id="browseBtn" class="btn" type="button">Browse</button>
+        <input id="fileInput" type="file" multiple class="hidden" />
+      </div>
+    </div>
+  </div>
+
+  <div id="menu" class="menu glass hidden"></div>
+
+  <div id="playerOverlay" class="overlay hidden"></div>
+  <div id="playerModal" class="modal hidden">
+    <div class="glass player glass-player">
+      <div class="row row-between">
+        <h3 class="neon">Player</h3>
+        <button id="closePlayer" class="btn accent" type="button">Close</button>
+      </div>
+      <div id="playerBody">
+        <div class="muted player-loading">Loading...</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const uid = () => crypto.randomUUID();
+    const prettySize = (bytes) => {
+      const units = ['B','KB','MB','GB','TB'];
+      let i = 0, v = bytes;
+      while (v >= 1024 && i < units.length-1) { v /= 1024; i++; }
+      return `${v.toFixed(v < 10 && i > 0 ? 1 : 0)} ${units[i]}`;
+    };
+    const detectKind = (mime = '') => {
+      if (mime.startsWith('video/')) return 'video';
+      if (mime.startsWith('image/')) return 'image';
+      if (mime.startsWith('audio/')) return 'audio';
+      if (mime.includes('pdf') || mime.includes('msword') || mime.includes('officedocument')) return 'doc';
+      return 'other';
+    };
+    const DB_NAME = 'neon-drive-onefile';
+    const DB_VERSION = 1;
+    function openDB() {
+      return new Promise((resolve, reject) => {
+        const req = indexedDB.open(DB_NAME, DB_VERSION);
+        req.onupgradeneeded = () => {
+          const db = req.result;
+          if (!db.objectStoreNames.contains('folders')) {
+            db.createObjectStore('folders', { keyPath: 'id' });
+          }
+          if (!db.objectStoreNames.contains('files')) {
+            const store = db.createObjectStore('files', { keyPath: 'id' });
+            store.createIndex('folderId', 'folderId', { unique: false });
+            store.createIndex('createdAt', 'createdAt', { unique: false });
+          }
+          if (!db.objectStoreNames.contains('blobs')) {
+            db.createObjectStore('blobs', { keyPath: 'key' });
+          }
+        };
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    function txDone(tx) {
+      return new Promise((resolve, reject) => {
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+    }
+    async function put(store, val) {
+      const db = await openDB();
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).put(val);
+      return txDone(tx);
+    }
+    async function del(store, id) {
+      const db = await openDB();
+      const tx = db.transaction(store, 'readwrite');
+      tx.objectStore(store).delete(id);
+      return txDone(tx);
+    }
+    async function get(store, id) {
+      const db = await openDB();
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).get(id);
+      return new Promise((resolve, reject) => {
+        req.onsuccess = () => resolve(req.result ?? null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function getAll(store) {
+      const db = await openDB();
+      const tx = db.transaction(store, 'readonly');
+      const req = tx.objectStore(store).getAll();
+      return new Promise((resolve, reject) => {
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function listFilesByFolder(folderId) {
+      const db = await openDB();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('files', 'readonly');
+        const idx = tx.objectStore('files').index('folderId');
+        const req = idx.getAll(folderId);
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function putBlob(key, blob) {
+      const db = await openDB();
+      const tx = db.transaction('blobs', 'readwrite');
+      tx.objectStore('blobs').put({ key, blob });
+      return txDone(tx);
+    }
+    async function getBlob(key) {
+      const db = await openDB();
+      const tx = db.transaction('blobs', 'readonly');
+      const req = tx.objectStore('blobs').get(key);
+      return new Promise((resolve, reject) => {
+        req.onsuccess = () => resolve(req.result?.blob ?? null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    let folders = [];
+    let files = [];
+    let currentFolderId = null;
+    let searchTerm = '';
+    let sortKey = 'createdAt';
+    let menuState = null;
+    let playerState = null;
+
+    const folderListEl = document.getElementById('folderList');
+    const rootBtn = document.getElementById('rootBtn');
+    const newFolderBtn = document.getElementById('newFolderBtn');
+    const trashBtn = document.getElementById('trashBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
+    const gridEl = document.getElementById('grid');
+    const breadcrumbsEl = document.getElementById('breadcrumbs');
+
+    const uploadOverlay = document.getElementById('uploadOverlay');
+    const uploadModal = document.getElementById('uploadModal');
+    const closeUpload = document.getElementById('closeUpload');
+    const dropzone = document.getElementById('dropzone');
+    const browseBtn = document.getElementById('browseBtn');
+    const fileInput = document.getElementById('fileInput');
+
+    const menuEl = document.getElementById('menu');
+
+    const playerOverlay = document.getElementById('playerOverlay');
+    const playerModal = document.getElementById('playerModal');
+    const playerBody = document.getElementById('playerBody');
+    const closePlayer = document.getElementById('closePlayer');
+
+    (async function init() {
+      folders = await getAll('folders');
+      files = await listFilesByFolder(currentFolderId);
+      renderFolders();
+      renderBreadcrumbs();
+      renderGrid();
+    })();
+
+    function renderFolders() {
+      folderListEl.innerHTML = '';
+      folders.forEach(f => {
+        const btn = document.createElement('button');
+        btn.className = 'folder-item glass' + (currentFolderId === f.id ? ' active' : '');
+        btn.innerHTML = `<span class="dot dot-amber"></span><span>${escapeHtml(f.name)}</span>`;
+        btn.onclick = () => {
+          currentFolderId = f.id;
+          refreshFiles();
+        };
+        folderListEl.appendChild(btn);
+      });
+    }
+    function renderBreadcrumbs() {
+      const trail = [];
+      trail.push({ id: null, name: 'My Drive' });
+      if (currentFolderId) {
+        const current = folders.find(x => x.id === currentFolderId);
+        if (current) trail.push({ id: current.id, name: current.name });
+      }
+      breadcrumbsEl.innerHTML = trail.map((c, i) => {
+        const sep = i < trail.length - 1 ? '<span style="margin:0 8px;">/</span>' : '';
+        return `<button data-id="${c.id ?? ''}">${escapeHtml(c.name)}</button>${sep}`;
+      }).join('');
+      Array.from(breadcrumbsEl.querySelectorAll('button')).forEach(b => {
+        b.onclick = () => {
+          const id = b.getAttribute('data-id') || null;
+          currentFolderId = id && id.length ? id : null;
+          refreshFiles();
+        };
+      });
+    }
+    function renderGrid() {
+      const q = searchTerm.trim().toLowerCase();
+      const display = files.filter(f => f.name.toLowerCase().includes(q));
+      display.sort((a, b) => {
+        if (sortKey === 'name') return a.name.localeCompare(b.name);
+        if (sortKey === 'size') return b.size - a.size;
+        return b.createdAt - a.createdAt;
+      });
+
+      gridEl.innerHTML = '';
+      if (display.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'glass card';
+        empty.style.padding = '20px';
+        empty.innerHTML = `<div class="muted" style="text-align:center;">No files yet. Click Upload or drag files into the window.</div>`;
+        gridEl.appendChild(empty);
+        return;
+      }
+
+      display.forEach(f => {
+        const card = document.createElement('div');
+        card.className = 'glass card';
+        card.oncontextmenu = (e) => {
+          e.preventDefault();
+          showMenu(f.id, e.clientX, e.clientY);
+        };
+        card.ondblclick = () => openFile(f.id);
+        const icon = iconForKind(f.kind);
+        card.innerHTML = `
+          <div class="card-top">
+            <div class="row">
+              ${icon}
+              <span style="font-weight: 600;">${escapeHtml(f.name)}</span>
+            </div>
+            <button class="btn" data-more="1">⋮</button>
+          </div>
+          <div class="row" style="margin-top: 8px; justify-content: space-between;">
+            <span class="muted">${prettySize(f.size)}</span>
+            <button class="btn btn-primary" data-open="1">Open</button>
+          </div>
+        `;
+        card.querySelector('[data-open="1"]').onclick = () => openFile(f.id);
+        card.querySelector('[data-more="1"]').onclick = (e) => {
+          const rect = e.target.getBoundingClientRect();
+          showMenu(f.id, rect.left, rect.bottom + 6);
+        };
+        gridEl.appendChild(card);
+      });
+    }
+
+    function iconForKind(kind) {
+      if (kind === 'video') return `<span class="dot dot-amber"></span>`;
+      if (kind === 'image') return `<span class="dot dot-neon"></span>`;
+      if (kind === 'audio') return `<span class="dot dot-magenta"></span>`;
+      return `<span class="dot" style="background:#a7b0c1;"></span>`;
+    }
+
+    function refreshFiles() {
+      (async () => {
+        files = await listFilesByFolder(currentFolderId);
+        renderFolders();
+        renderBreadcrumbs();
+        renderGrid();
+      })();
+    }
+
+    function showMenu(id, x, y) {
+      menuState = { id, x, y };
+      menuEl.style.left = `${x}px`;
+      menuEl.style.top = `${y}px`;
+      menuEl.innerHTML = `
+        <button class="menu-item">Rename</button>
+        <button class="menu-item">Move to root</button>
+        <button class="menu-item accent">Delete</button>
+      `;
+      menuEl.classList.remove('hidden');
+      const [renameBtn, moveBtn, deleteBtn] = menuEl.querySelectorAll('.menu-item');
+      renameBtn.onclick = async () => {
+        const f = await get('files', id);
+        if (!f) return;
+        const name = prompt('New name', f.name);
+        if (!name || !name.trim()) return closeMenu();
+        await put('files', { ...f, name: name.trim(), updatedAt: Date.now() });
+        closeMenu();
+        refreshFiles();
+      };
+      moveBtn.onclick = async () => {
+        const f = await get('files', id);
+        if (!f) return;
+        await put('files', { ...f, folderId: null, updatedAt: Date.now() });
+        closeMenu();
+        refreshFiles();
+      };
+      deleteBtn.onclick = async () => {
+        await del('files', id);
+        closeMenu();
+        refreshFiles();
+      };
+      setTimeout(() => {
+        window.addEventListener('click', handleOutsideClickOnce, { once: true });
+      }, 0);
+    }
+    function handleOutsideClickOnce() { closeMenu(); }
+    function closeMenu() {
+      menuState = null;
+      menuEl.classList.add('hidden');
+    }
+
+    function openUpload() {
+      uploadOverlay.classList.remove('hidden');
+      uploadModal.classList.remove('hidden');
+    }
+    function closeUploadModal() {
+      uploadOverlay.classList.add('hidden');
+      uploadModal.classList.add('hidden');
+      dropzone.classList.remove('drag');
+    }
+    function handleFileList(list) {
+      closeUploadModal();
+      (async () => {
+        for (const file of Array.from(list)) {
+          const blobKey = uid();
+          await putBlob(blobKey, file);
+          const item = {
+            id: uid(),
+            name: file.name,
+            kind: detectKind(file.type),
+            size: file.size,
+            folderId: currentFolderId,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            blobKey,
+            mime: file.type
+          };
+          await put('files', item);
+        }
+        refreshFiles();
+      })();
+    }
+
+    dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('drag'); });
+    dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+    dropzone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropzone.classList.remove('drag');
+      if (e.dataTransfer?.files?.length) handleFileList(e.dataTransfer.files);
+    });
+
+    browseBtn.onclick = () => fileInput.click();
+    fileInput.onchange = (e) => {
+      const files = e.target.files;
+      if (files && files.length) handleFileList(files);
+    };
+
+    window.addEventListener('dragover', (e) => { e.preventDefault(); });
+    window.addEventListener('drop', (e) => {
+      if (uploadOverlay.classList.contains('hidden')) return;
+      e.preventDefault();
+    });
+
+    async function openFile(id) {
+      const f = await get('files', id);
+      if (!f) return;
+      if (f.kind === 'video' && f.blobKey) {
+        const blob = await getBlob(f.blobKey);
+        if (!blob) return openPlayer(null);
+        const url = URL.createObjectURL(blob);
+        openPlayer(url);
+      } else if (f.kind === 'image' && f.blobKey) {
+        const blob = await getBlob(f.blobKey);
+        const url = blob ? URL.createObjectURL(blob) : null;
+        openPlayer(url, 'image');
+      } else {
+        alert('Preview available for video and image in this prototype.');
+      }
+    }
+    function openPlayer(url, type = 'video') {
+      playerOverlay.classList.remove('hidden');
+      playerModal.classList.remove('hidden');
+      if (!url) {
+        playerBody.innerHTML = `<div class="muted" style="padding:40px; text-align:center;">Loading...</div>`;
+        return;
+      }
+      if (type === 'image') {
+        playerBody.innerHTML = `<img src="${url}" style="width:100%; border-radius:10px;" />`;
+      } else {
+        playerBody.innerHTML = `<video src="${url}" controls></video>`;
+      }
+      playerState = { url, type };
+    }
+    function closePlayerModal() {
+      playerOverlay.classList.add('hidden');
+      playerModal.classList.add('hidden');
+      if (playerState?.url) URL.revokeObjectURL(playerState.url);
+      playerState = null;
+    }
+
+    rootBtn.onclick = () => { currentFolderId = null; refreshFiles(); };
+    newFolderBtn.onclick = async () => {
+      const name = prompt('Folder name');
+      if (!name || !name.trim()) return;
+      const folder = { id: uid(), name: name.trim(), parentId: currentFolderId, createdAt: Date.now() };
+      await put('folders', folder);
+      folders = await getAll('folders');
+      renderFolders();
+      renderBreadcrumbs();
+    };
+    trashBtn.onclick = () => alert('Trash UI can be added here.');
+
+    uploadBtn.onclick = openUpload;
+    closeUpload.onclick = closeUploadModal;
+    uploadOverlay.onclick = closeUploadModal;
+
+    searchInput.oninput = (e) => { searchTerm = e.target.value || ''; renderGrid(); };
+    sortSelect.onchange = (e) => { sortKey = e.target.value; renderGrid(); };
+
+    closePlayer.onclick = closePlayerModal;
+    playerOverlay.onclick = closePlayerModal;
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>"'`=\/]/g, function (c) {
+        return ({
+          '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;',
+          "'": '&#39;', '/': '&#x2F;', '`': '&#x60;', '=': '&#x3D;'
+        })[c];
+      });
+    }
+  </script>
+</body>
+</html>
